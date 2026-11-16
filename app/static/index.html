@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sho'r Radar</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#10303a;--ink2:#46606a;--paper:#eef2f3;--panel:#fbfcfc;--line:#d3dde0;
+--low:#2e8f5b;--med:#d9a21b;--high:#c9372c;--irr:#1b6fb5;--mon:#b8860b;--wait:#3f7d58}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif;color:var(--ink);background:var(--paper);height:100vh;display:grid;grid-template-columns:400px 1fr}
+aside{overflow:auto;padding:18px 20px;background:var(--panel);border-right:1px solid var(--line)}
+#map{height:100%}
+h1{font:800 26px "Bricolage Grotesque",sans-serif;margin:0}
+h2{font:600 15px "Bricolage Grotesque",sans-serif;margin:18px 0 6px}
+.top{display:flex;justify-content:space-between;align-items:center}
+.lang button{border:1px solid var(--line);background:none;color:var(--ink);padding:3px 8px;border-radius:4px;cursor:pointer}
+.lang button.on{background:var(--ink);color:var(--panel)}
+.ctl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+label{font-size:12px;color:var(--ink2);display:block}
+select{width:100%;padding:6px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);font:inherit}
+.verdict{margin-top:16px;padding:14px 16px;border-left:8px solid var(--irr);background:var(--paper)}
+.verdict .w{font:800 34px/1 "Bricolage Grotesque",sans-serif}
+.verdict p{margin:8px 0 0;color:var(--ink2)}
+.meter{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--low) 0 35%,var(--med) 35% 60%,var(--high) 60%);position:relative;margin:8px 0 4px}
+.meter i{position:absolute;top:-4px;width:4px;height:18px;background:var(--ink);border-radius:2px}
+.chips span{display:inline-block;margin:2px 4px 2px 0;padding:2px 9px;border-radius:12px;border:1px solid var(--line);font-size:13px}
+.chips .good{border-color:var(--low)} .chips .bad{border-color:var(--high);color:var(--ink2);text-decoration:line-through}
+.small{font-size:12px;color:var(--ink2)}
+ul{list-style:none;padding:0;margin:0}
+li.f{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);cursor:pointer}
+li.f:hover{background:var(--paper)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
+.leaflet-container{font-family:inherit}
+@media (max-width:800px){body{grid-template-columns:1fr;grid-template-rows:55vh 1fr;height:auto}#map{order:-1;height:55vh}aside{border-right:0}}
+:focus-visible{outline:2px solid var(--irr);outline-offset:2px}
+</style>
+</head>
+<body>
+<aside>
+  <div class="top"><h1>Sho'r Radar</h1>
+    <div class="lang" id="lang"><button data-l="uz">UZ</button><button data-l="ru">RU</button><button data-l="en">EN</button></div></div>
+  <div class="small" id="sub">Click the map or pick a field.</div>
+  <div class="ctl">
+    <div><label for="crop">Crop</label><select id="crop"></select></div>
+    <div><label for="stage">Stage</label><select id="stage"></select></div>
+    <div><label for="gw">Groundwater</label><select id="gw"><option value="unknown">Unknown</option><option value="shallow">Shallow (&lt;2 m)</option><option value="medium">Medium (2-3 m)</option><option value="deep">Deep (&gt;3 m)</option></select></div>
+    <div><label for="dr">Drainage</label><select id="dr"><option value="unknown">Unknown</option><option value="good">Working</option><option value="poor">Poor</option></select></div>
+  </div>
+  <div id="out" aria-live="polite"></div>
+  <h2>Fields</h2>
+  <ul id="fields"></ul>
+</aside>
+<div id="map"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+const COL={LOW:'#2e8f5b',MEDIUM:'#d9a21b',HIGH:'#c9372c'}, SCOL={IRRIGATE:'#1b6fb5',MONITOR:'#b8860b',WAIT:'#3f7d58'};
+const STAGES=['fallow','initial','development','mid','late'];
+let lang=localStorage.getItem('lang')||'uz', pin=null, fieldsData=[], current=null;
+try{window.Telegram&&Telegram.WebApp&&Telegram.WebApp.ready()}catch(e){}
+
+const map=L.map('map').setView([41.2,63.5],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'&copy; OpenStreetMap | Data: NASA POWER, Open-Meteo'}).addTo(map);
+const layer=L.layerGroup().addTo(map);
+
+const $=id=>document.getElementById(id);
+$('crop').innerHTML=''; $('stage').innerHTML=STAGES.map(s=>`<option ${s=='mid'?'selected':''}>${s}</option>`).join('');
+fetch('/api/meta').then(r=>r.json()).then(m=>{$('crop').innerHTML=m.crops.map(c=>`<option value="${c}">${c.replace('_',' ')}</option>`).join('')});
+
+document.querySelectorAll('#lang button').forEach(b=>{b.onclick=()=>{lang=b.dataset.l;localStorage.setItem('lang',lang);paintLang();loadFields();if(current)query(current.lat,current.lon)}});
+function paintLang(){document.querySelectorAll('#lang button').forEach(b=>b.classList.toggle('on',b.dataset.l===lang));document.documentElement.lang=lang}
+paintLang();
+['crop','stage','gw','dr'].forEach(id=>$(id).onchange=()=>current&&query(current.lat,current.lon));
+
+function show(a){
+  const t=a.text, s=a.irrigation.status, lvl=a.salinity.level;
+  $('out').innerHTML=`
+  <div class="verdict" style="border-color:${SCOL[s]}"><div class="w" style="color:${SCOL[s]}">${t.irrigation_status}</div><p>${t.irrigation_reason}</p></div>
+  <h2>${{en:'Salt risk',uz:"Sho'rlanish xavfi",ru:'Риск засоления'}[lang]}: ${t.salt_level} (${a.salinity.score}/100)</h2>
+  <div class="meter"><i style="left:calc(${a.salinity.score}% - 2px)"></i></div>
+  <div class="small">${t.salt_factors||''}</div>
+  <h2>${{en:'Flushing',uz:'Yuvish',ru:'Промывка'}[lang]}: ${t.flush_status}</h2><div>${t.flush_reason}</div>
+  <h2>${{en:'Crop ideas',uz:'Ekin tavsiyalari',ru:'Подбор культур'}[lang]}</h2>
+  <div class="chips">${t.good_crops.map(c=>`<span class="good">${c}</span>`).join('')}${t.avoid_crops.map(c=>`<span class="bad">${c}</span>`).join('')}</div>
+  <div class="small" style="margin-top:6px">${t.rotation}</div>
+  <p class="small">${t.disclaimer}<br>${a.data.source==='demo'?'⚠ demo data':'NASA POWER to '+a.data.last_date}${a.data.forecast?' + Open-Meteo forecast':' (no forecast)'}</p>`;
+}
+async function query(lat,lon){
+  current={lat,lon};
+  if(pin)map.removeLayer(pin); pin=L.marker([lat,lon]).addTo(map);
+  const q=new URLSearchParams({lat,lon,crop:$('crop').value,stage:$('stage').value,groundwater:$('gw').value,drainage:$('dr').value,lang});
+  $('out').innerHTML='<p class="small">…</p>';
+  const r=await fetch('/api/advice?'+q);
+  if(!r.ok){$('out').innerHTML='<p>Data source unavailable. Try again.</p>';return}
+  show(await r.json());
+}
+map.on('click',e=>query(+e.latlng.lat.toFixed(3),+e.latlng.lng.toFixed(3)));
+
+async function loadFields(){
+  const r=await fetch('/api/map?lang='+lang); fieldsData=await r.json(); layer.clearLayers();
+  $('fields').innerHTML='';
+  fieldsData.forEach(f=>{
+    const a=f.advice, c=COL[a.salinity.level];
+    L.circleMarker([f.lat,f.lon],{radius:11,color:SCOL[a.irrigation.status],weight:3,fillColor:c,fillOpacity:.85})
+      .addTo(layer).bindTooltip(`${f.name}: ${a.text.irrigation_status}`).on('click',e=>{L.DomEvent.stop(e);pick(f)});
+    const li=document.createElement('li');li.className='f';li.tabIndex=0;
+    li.innerHTML=`<span><span class="dot" style="background:${c}"></span>${f.name}</span><b style="color:${SCOL[a.irrigation.status]}">${a.text.irrigation_status}</b>`;
+    li.onclick=()=>pick(f); li.onkeydown=e=>e.key==='Enter'&&pick(f); $('fields').appendChild(li);
+  });
+}
+function pick(f){$('crop').value=f.crop;$('gw').value=f.groundwater;map.setView([f.lat,f.lon],8);query(f.lat,f.lon)}
+loadFields();
+</script>
+</body>
+</html>

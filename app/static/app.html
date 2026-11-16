@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Sho'r Radar</title>
+<meta name="theme-color" content="#F3F6F4">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="/img/app-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Brand palette sampled from the Sho'r Radar logo: ink #0E2A2E, field green #2EA05A, amber #F2B01E, alert red #DA3A2C, wordmark green #1D7A45 */
+:root{
+  --bg:#F3F6F4; --card:#FFFFFF; --ink:#0E2A2E; --muted:#566F73; --line:rgba(14,42,46,.10); --chip:#E6EDE9;
+  --brand:#1D7A45; --green:#2EA05A; --amber:#F2B01E; --red:#DA3A2C; --blue:#2D7FD0; --mint:#6FD59B; --ring:#0E2A2E;
+  --on-brand:#fff; --shadow:0 1px 2px rgba(14,42,46,.06),0 6px 18px rgba(14,42,46,.06);
+}
+:root[data-theme="dark"]{
+  --bg:#0A1C1F; --card:#0E2A2E; --ink:#F6F3EA; --muted:#8FA7AA; --line:rgba(246,243,234,.10); --chip:#153A3F;
+  --brand:#6FD59B; --ring:#F6F3EA; --on-brand:#0A1C1F; --shadow:0 1px 2px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.wrap{max-width:600px;margin:0 auto;padding:0 16px 16px}
+header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header .in{max-width:600px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:9px;font-size:19px;letter-spacing:-.02em;flex:1}
+.brand b{font-weight:800} .brand span{font-weight:400;color:var(--brand)} .center .brand{justify-content:center}
+.iconbtn{width:38px;height:38px;border-radius:12px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;padding:0;color:var(--ink);cursor:pointer}
+h1{font-size:24px;line-height:1.15;margin:18px 0 6px;letter-spacing:-.025em;font-weight:800} h2{font-size:15px;margin:0 0 10px;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14.5px} .small{font-size:13.5px;color:var(--muted)}
+.iconbtn.lbl{width:auto;padding:0 13px;gap:6px;font-weight:700;font-size:14px;display:flex;align-items:center;white-space:nowrap}
+.hero .do{font-size:17px;font-weight:700;margin:0 0 6px}
+.hero .w .ico{font-size:34px;margin-right:6px}
+.bigbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bigbtns button{min-height:56px;font-size:15px;line-height:1.2}
+.guide{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line);font-size:15px} .guide:last-child{border:0}
+.guide .gi{flex:none;width:38px;height:38px;border-radius:12px;background:var(--chip);display:grid;place-items:center;color:var(--brand)} .guide .gi svg{width:22px;height:22px}
+.guide b{display:block}
+.cta{background:linear-gradient(135deg,#14633A,#2EA05A);color:#fff;border:0} .cta h2{font-size:19px} .cta p{margin:0 0 12px;opacity:.95} .cta button{background:#fff;color:#14633A}
+.alertbox{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 16%,var(--card))}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:var(--shadow)}
+button{font:inherit;cursor:pointer;border:0;border-radius:14px;padding:12px 16px;background:var(--brand);color:var(--on-brand);font-weight:700}
+button.ghost{background:var(--chip);color:var(--ink)} button.danger{background:transparent;color:var(--red)} button.block{width:100%} button:disabled{opacity:.5}
+button.mini{padding:8px 13px;font-size:13.5px;border-radius:11px;min-height:38px}
+button:not(.mini):not(.iconbtn):not(.sw):not(.nav button){min-height:48px;font-size:15.5px}
+button:active{transform:scale(.98)}
+input,select,textarea{width:100%;font:inherit;font-size:16px;min-height:48px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+textarea{min-height:84px;resize:vertical} label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px;font-weight:600}
+.row{display:flex;gap:8px;align-items:center} .row>*{flex:1} .between{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:7px} .scroll{display:flex;gap:7px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none} .scroll::-webkit-scrollbar{display:none}
+.chip{padding:10px 15px;border-radius:999px;background:var(--chip);font-size:14px;font-weight:600;white-space:nowrap;cursor:pointer;border:1.5px solid transparent;flex:none}
+.chip.on{background:var(--ink);color:var(--bg)} :root[data-theme="dark"] .chip.on{background:var(--mint);color:#0A1C1F}
+.chip .pl{font-size:10px;font-weight:800;color:var(--amber);margin-left:5px;letter-spacing:.04em}
+.chip.static{cursor:default}
+.tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;color:#fff;letter-spacing:.01em}
+.lv-LOW,.t-good{background:var(--green)} .lv-MEDIUM,.t-marginal{background:var(--amber);color:#2a1f00} .lv-HIGH,.t-avoid{background:var(--red)}
+.hero{border-radius:22px;padding:20px;color:#fff;margin:12px 0;position:relative;overflow:hidden}
+.hero .k{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.hero .w{font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1.05;margin:4px 0 8px} .hero p{margin:0;font-size:15.5px;opacity:.96}
+.hero.IRRIGATE{background:linear-gradient(135deg,#1F5FA8,#2D7FD0)} .hero.MONITOR{background:linear-gradient(135deg,#B9820A,#E0A21A)} .hero.WAIT{background:linear-gradient(135deg,#14633A,#2EA05A)}
+.hero .bg{position:absolute;right:-30px;top:-30px;opacity:.12}
+.facts{display:grid;gap:8px;margin-top:14px;grid-template-columns:repeat(3,1fr)}
+.fact{background:rgba(255,255,255,.16);border-radius:12px;padding:8px 10px} .fact b{display:block;font-size:17px} .fact span{font-size:11px;opacity:.9;line-height:1.2;display:block}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow)}
+.tile .l{font-size:12px;color:var(--muted);font-weight:600;display:flex;gap:6px;align-items:center} .tile .v{font-size:24px;font-weight:800;letter-spacing:-.02em;margin-top:2px} .tile .v small{font-size:13px;font-weight:600;color:var(--muted)}
+.meter{height:10px;border-radius:6px;margin:12px 0 6px;position:relative;background:linear-gradient(90deg,var(--green) 0 35%,var(--amber) 35% 60%,var(--red) 60%)}
+.meter i{position:absolute;top:-5px;width:4px;height:20px;background:var(--ink);border-radius:3px;transform:translateX(-2px);box-shadow:0 0 0 2px var(--card)}
+.seg{display:flex;background:var(--chip);border-radius:13px;padding:3px} .seg button{flex:1;background:none;color:var(--muted);padding:7px 8px;font-size:13px;border-radius:10px} .seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.fc{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center} .fc div{font-size:11.5px;color:var(--muted)} .fc b{display:block;color:var(--ink);font-size:13px}
+.fc .bar{height:46px;display:flex;align-items:flex-end;justify-content:center} .fc .bar i{display:block;width:60%;border-radius:4px 4px 0 0;background:var(--blue);min-height:2px}
+.log{display:flex;gap:6px;flex-wrap:wrap} .evt{font-size:13px;color:var(--muted);padding:5px 0;border-bottom:1px dashed var(--line)} .evt:last-child{border:0}
+.crop{display:grid;grid-template-columns:1fr auto;gap:2px 10px} .crop h3{margin:0;font-size:16px;font-weight:700} .crop .tolbar{grid-column:1/-1;margin-top:8px}
+.tol{height:8px;border-radius:5px;background:var(--chip);position:relative} .tol i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--green)} .tol u{position:absolute;top:-4px;width:3px;height:16px;background:var(--ink);border-radius:2px;text-decoration:none}
+.dots{letter-spacing:2px;color:var(--blue)} .dots s{text-decoration:none;color:var(--line)}
+.warn{color:#B9820A;font-size:12.5px;font-weight:600;grid-column:1/-1;margin-top:4px}
+.step{display:flex;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:14px} .step:last-child{border:0} .step i{flex:none;width:26px;height:26px;border-radius:50%;background:var(--brand);color:var(--on-brand);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:13px}
+.month{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px} .month:last-child{border:0} .month b{min-width:36px;color:var(--brand)}
+.post .meta{font-size:12px;color:var(--muted);margin-bottom:5px} .post p{margin:0 0 10px;white-space:pre-wrap;word-break:break-word} .post .acts{display:flex;gap:6px}
+.nav{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:10}
+.nav .in{max-width:600px;margin:0 auto;display:flex}
+.nav button{flex:1;background:none;color:var(--muted);border-radius:0;padding:10px 2px 9px;font-size:12.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px}
+.nav button svg{width:24px;height:24px} .nav button.on{color:var(--brand);box-shadow:inset 0 3px 0 var(--brand)}
+.sheet-bg{position:fixed;inset:0;background:rgba(5,16,18,.55);display:flex;align-items:flex-end;z-index:30}
+.sheet{background:var(--bg);width:100%;max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;padding:6px 16px calc(22px + env(safe-area-inset-bottom));max-width:600px;margin:0 auto}
+.sheet .grab{width:42px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 4px}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:22px;font-size:14px;font-weight:600;z-index:50;max-width:90%;box-shadow:var(--shadow)}
+.skel{height:96px;border-radius:18px;background:linear-gradient(90deg,var(--chip),var(--line),var(--chip));background-size:200% 100%;animation:sh 1.2s infinite;margin:12px 0}
+@keyframes sh{to{background-position:-200% 0}}
+.mapwrap{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--line)} #map{height:calc(100dvh - 330px);min-height:340px;z-index:0}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:8px} .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.leaflet-popup-content-wrapper{border-radius:14px} .leaflet-popup-content{margin:12px 14px;font:13.5px Inter,system-ui,sans-serif}
+.sw{width:48px;height:29px;border-radius:15px;background:var(--chip);position:relative;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:23px;height:23px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.3)} .sw.on{background:var(--green)} .sw.on::after{left:22px}
+.center{text-align:center;padding:36px 10px} .center .logo{margin:0 auto 14px}
+.pill{padding:15px 10px;min-height:52px;display:flex;flex-direction:column;justify-content:center;border-radius:14px;background:var(--chip);text-align:center;font-weight:700;cursor:pointer;border:2px solid transparent;font-size:14px}
+.pill.on{border-color:var(--green);background:var(--card)} .pilot-star{color:#B9820A;font-size:11px;display:block;font-weight:800;letter-spacing:.04em}
+pre{white-space:pre-wrap;font:inherit;margin:0} a{color:var(--brand);font-weight:600}
+svg text{font-family:Inter,system-ui,sans-serif}
+details.sec{padding:0} details.sec>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px;min-height:54px;font-weight:700;font-size:15px}
+details.sec>summary::-webkit-details-marker{display:none} .sec .secbody{padding:0 16px 16px} .sec .r{display:flex;gap:8px;align-items:center}
+.chev{font-style:normal;font-size:22px;line-height:1;color:var(--muted);transition:transform .15s} details[open] .chev{transform:rotate(90deg)}
+table.tr{width:100%;border-collapse:collapse;font-size:13px} .tr td,.tr th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.tr th{color:var(--muted);font-weight:600;font-size:11.5px} .tr tr.dec{background:color-mix(in srgb,var(--green) 14%,transparent)} .tr tr.hit td:first-child{font-weight:600}
+#offbar{background:var(--amber);color:#2a1f00;text-align:center;font-size:12.5px;font-weight:700;padding:6px 10px}
+.vbadge{display:inline-block;background:var(--green);color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:2px 8px;margin-left:6px}
+.src{padding:9px 0;border-bottom:1px dashed var(--line)} .src:last-child{border:0}
+details.more{border:1px dashed var(--line);border-radius:14px;margin-top:16px;background:transparent;box-shadow:none}
+details.more>summary{list-style:none;cursor:pointer;padding:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+details.more>summary::-webkit-details-marker{display:none} details.more[open] .chev{transform:rotate(90deg)}
+details.more .secbody{padding:0 14px 14px}
+.step3{display:flex;gap:6px;margin:4px 0 14px} .step3 i{flex:1;height:5px;border-radius:3px;background:var(--line)} .step3 i.on{background:var(--brand)}
+</style>
+</head>
+<body>
+<header><div class="in" id="hdr"></div></header>
+<div id="offbar" hidden></div>
+<div id="app" class="wrap"></div>
+<nav class="nav" id="nav" hidden><div class="in" id="navin"></div></nav>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+const tg = window.Telegram && Telegram.WebApp;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const S = { boot: null, lang: "uz", tab: "home", ctx: null, trend: 30, layer: "map", ndvi: false, step: "lang", cache: {}, rid: 0, map: null, pickRegion: null };
+
+/* ---------- theme ---------- */
+function themePref() { try { return JSON.parse(localStorage.getItem("sr:theme")) || "light"; } catch (e) { return "light"; } }   // default: light
+function applyTheme() {
+  const pref = themePref();
+  const dark = pref === "dark" || (pref === "auto" && (tg ? tg.colorScheme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches));
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  const col = dark ? "#0A1C1F" : "#F3F6F4";
+  const mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.content = col;
+  if (tg) { try { tg.setHeaderColor(col); tg.setBackgroundColor(col); tg.setBottomBarColor && tg.setBottomBarColor(dark ? "#0E2A2E" : "#FFFFFF"); } catch (e) {} }
+}
+const THEME_L = { light: { uz: "☀️ Yorug'", ru: "☀️ Светлая", en: "☀️ Light" }, dark: { uz: "🌙 Qorong'i", ru: "🌙 Тёмная", en: "🌙 Dark" }, auto: { uz: "📱 Avto", ru: "📱 Авто", en: "📱 Auto" }, title: { uz: "Mavzu", ru: "Тема", en: "Theme" } };
+const TL = k => THEME_L[k][S.lang] || THEME_L[k].en;
+applyTheme();
+if (tg) { tg.ready(); tg.expand(); tg.onEvent("themeChanged", () => { applyTheme(); }); }
+
+/* ---------- helpers ---------- */
+const T = (k, p = {}) => { const e = S.boot.i18n[k]; let s = (e && (e[S.lang] || e.en)) || k; for (const a in p) s = s.replaceAll("{" + a + "}", p[a]); return s; };
+const meta = () => S.boot.meta;
+const nm = (tbl, key) => { const e = meta()[tbl][key]; return e ? (e[S.lang] || e.en) : key; };
+const regionName = id => { const r = meta().regions.find(r => r.id === id); return r ? (r.name[S.lang] || r.name.en) : "-"; };
+const LOC = { uz: "uz-UZ", ru: "ru-RU", en: "en-GB" };
+const fmtDate = iso => iso ? new Date(iso + "T00:00:00").toLocaleDateString(LOC[S.lang] || "en-GB", { day: "numeric", month: "short", year: "numeric" }) : "–";
+const fmtDay = iso => new Date(iso + "T00:00:00").toLocaleDateString(LOC[S.lang] || "en-GB", { weekday: "short" });
+const pct = v => v == null ? "–" : Math.round(v * 100);
+const num = (v, d = 1) => v == null ? "–" : (+v).toFixed(d).replace(/\.0$/, "");
+function toast(msg) { const d = document.createElement("div"); d.className = "toast"; d.textContent = msg; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+const haptic = t => { try { tg && tg.HapticFeedback.notificationOccurred(t || "success"); } catch (e) {} };
+const confirmBox = (msg, cb) => (tg && tg.showConfirm) ? tg.showConfirm(msg, ok => ok && cb()) : (confirm(msg) && cb());
+const openLink = url => (tg && tg.openLink) ? tg.openLink(url) : window.open(url, "_blank");
+
+const LS = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+const uidKey = () => (tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "x");
+function syncBanner() {
+  const el = $("#offbar"); if (!el) return;
+  if (S.offlineAt && S.boot) { el.hidden = false; el.textContent = "📡 " + T("a_offline", { t: new Date(S.offlineAt).toLocaleString(LOC[S.lang] || "en-GB", { dateStyle: "medium", timeStyle: "short" }) }); } else el.hidden = true;
+}
+async function api(path, method = "GET", body, timeoutMs = 30000) {
+  // timeout + one automatic retry for reads; if the network is down, reads fall back to the copy saved on this phone
+  const attempts = method === "GET" ? 2 : 1, key = `sr:${uidKey()}:${path}`;
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const r = await fetch("/api/app" + path, { method, signal: ctl.signal, headers: { "Content-Type": "application/json", "X-Init-Data": tg ? tg.initData : "" }, body: body ? JSON.stringify(body) : undefined });
+      if (r.ok) {
+        const d = await r.json();
+        if (method === "GET") { LS.set(key, { t: Date.now(), d }); if (S.offlineAt) { S.offlineAt = null; syncBanner(); } }
+        return d;
+      }
+      let m = ""; try { m = (await r.json()).detail; } catch (e) {}
+      lastErr = new Error(typeof m === "string" && m ? m : r.status);
+      if (r.status < 500) { lastErr.fatal = true; throw lastErr; }
+    } catch (e) { lastErr = e.name === "AbortError" ? new Error("timeout") : e; if (lastErr.fatal) break; }
+    finally { clearTimeout(timer); }
+    if (i < attempts - 1) await new Promise(res => setTimeout(res, 1200));
+  }
+  if (method === "GET" && !(lastErr && lastErr.fatal)) { const c = LS.get(key); if (c) { S.offlineAt = c.t; syncBanner(); return c.d; } }
+  throw lastErr;
+}
+
+/* ---------- logo (recreated from the brand mark) ---------- */
+function mark(size = 30) {
+  const id = "c" + Math.random().toString(36).slice(2, 7);
+  return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true"><defs><clipPath id="${id}"><circle cx="50" cy="50" r="40.8"/></clipPath></defs>
+  <circle cx="50" cy="50" r="46" fill="var(--ring)"/><g clip-path="url(#${id})"><rect width="100" height="100" fill="#2EA05A"/>
+  <polygon points="53.2,9 86,29.3 57.6,44.4" fill="#F7CE74"/><polygon points="57.6,44.4 86,29.3 92,50 64,55.9" fill="#F2B01E"/>
+  <polygon points="62.5,56.2 92,50 92,66 67.4,88 58.6,78.1" fill="#DA3A2C"/><polygon points="10.9,61.7 32.4,57.6 38.3,79.9 26.2,83" fill="#F2B01E"/>
+  <polygon points="49.4,9 53.2,9 56,45 50,50" fill="#fff" opacity=".35"/>
+  <g stroke="#fff" stroke-opacity=".55" stroke-width="1.1" fill="none"><line x1="26.6" y1="16.4" x2="35.7" y2="88.4"/><line x1="13.7" y1="31.3" x2="52.1" y2="24.9"/><line x1="14.2" y1="69.5" x2="88.4" y2="63.5"/></g>
+  <g fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="1.5"><circle cx="50" cy="50" r="30.4"/><circle cx="50" cy="50" r="15.4"/></g>
+  <line x1="50" y1="9" x2="50" y2="46" stroke="#fff" stroke-width="2.2"/></g>
+  <circle cx="50" cy="50" r="4.4" fill="var(--ring)"/><circle cx="50" cy="50" r="2.6" fill="#fff"/></svg>`;
+}
+const wordmark = (size = 19) => `<span class="brand" style="font-size:${size}px"><b>Sho’r</b> <span>Radar</span></span>`;
+const ICON = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>',
+  map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>',
+  crops: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V8"/><path d="M12 12C7 12 5 9 5 5c5 0 7 2 7 7z"/><path d="M12 15c5 0 7-3 7-7-5 0-7 2-7 7z"/></svg>',
+  people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.4 0 4 2 4 5"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 015 .4c0 1.6-2.5 2-2.5 3.6M12 17v.5"/></svg>',
+  gear: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>',
+};
+
+/* ---------- context (field or district) ---------- */
+const ctxKey = c => c.type + ":" + c.id;
+const ctxPath = c => c.type === "field" ? `/fields/${c.id}` : `/area/${c.id}`;
+function defaultCtx() {
+  const f = S.boot.fields[0];
+  if (f) return { type: "field", id: f.id };
+  const r = S.boot.user.region;
+  return { type: "area", id: r || meta().pilots[0] };
+}
+function ensureCtx() {
+  if (!S.ctx) S.ctx = defaultCtx();
+  if (S.ctx.type === "field" && !S.boot.fields.find(f => f.id === S.ctx.id)) S.ctx = defaultCtx();
+}
+async function getData(kind, force = false) {
+  const key = ctxKey(S.ctx) + ":" + kind;
+  const hit = S.cache[key];
+  if (!force && hit && Date.now() - hit.t < 5 * 60 * 1000) return hit.d;
+  const d = await api(ctxPath(S.ctx) + "/" + kind + (force && kind === "status" ? "?refresh=true" : ""));
+  S.cache[key] = { t: Date.now(), d };
+  return d;
+}
+const dropCache = () => { S.cache = {}; };
+
+/* Picker: my fields first (one tap each), "+ Field", and one "Other area" chip that reveals the area list. */
+function ctxBar() {
+  const onArea = S.ctx.type === "area";
+  const fields = S.boot.fields.map(f => `<span class="chip ${S.ctx.type === "field" && S.ctx.id === f.id ? "on" : ""}" data-act="ctx" data-t="field" data-v="${f.id}">🌾 ${esc(f.name)}</span>`).join("");
+  const showSel = onArea || S.areas;
+  const sel = showSel ? `<select data-act="ctxsel" aria-label="${esc(T("a_other_area"))}" style="margin:2px 0 4px"><option value="">${esc(T("a_pick_area"))}</option>${meta().regions.map(r => `<option value="${r.id}" ${onArea && S.ctx.id === r.id ? "selected" : ""}>${esc(r.name[S.lang] || r.name.en)}</option>`).join("")}</select>` : "";
+  return `<div class="scroll">${fields}<span class="chip" data-act="addfield">${esc(T("a_add_field"))}</span><span class="chip ${showSel ? "on" : ""}" data-act="areas">📍 ${esc(T("a_other_area"))}</span></div>${sel}`;
+}
+
+/* ---------- charts (plain SVG, no library) ---------- */
+function chart({ data, kind = "line", color = "#2EA05A", h = 96, min = null, max = null, lines = [], fmt = v => num(v) }) {
+  const w = 320, pad = { l: 6, r: 6, t: 8, b: 18 }, n = data.length;
+  const vals = data.map(d => d.v).filter(v => v != null);
+  if (!vals.length) return `<div class="small">–</div>`;
+  const lo = min ?? Math.min(...vals), hi = max ?? Math.max(...vals, lo + 0.0001);
+  const X = i => pad.l + (n === 1 ? 0 : i * (w - pad.l - pad.r) / (n - 1)), Y = v => pad.t + (1 - (v - lo) / (hi - lo || 1)) * (h - pad.t - pad.b);
+  let body = "";
+  lines.forEach(l => { if (l.v >= lo && l.v <= hi) body += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${Y(l.v)}" y2="${Y(l.v)}" stroke="${l.c}" stroke-dasharray="4 4" stroke-width="1"/>`; });
+  if (kind === "bar") {
+    const bw = Math.max(1.5, (w - pad.l - pad.r) / n - 1.5);
+    data.forEach((d, i) => { if (d.v > 0) body += `<rect x="${X(i) - bw / 2}" y="${Y(d.v)}" width="${bw}" height="${Y(lo) - Y(d.v)}" rx="1.5" fill="${color}"/>`; });
+  } else {
+    let path = "", started = false, area = "";
+    data.forEach((d, i) => { if (d.v == null) { started = false; return; } path += (started ? "L" : "M") + X(i).toFixed(1) + " " + Y(d.v).toFixed(1); started = true; });
+    area = path + `L${X(n - 1)} ${Y(lo)}L${X(0)} ${Y(lo)}Z`;
+    body += `<path d="${area}" fill="${color}" opacity=".12"/><path d="${path}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+  const last = data.filter(d => d.v != null).slice(-1)[0];
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img">${body}
+    <line x1="${pad.l}" x2="${w - pad.r}" y1="${Y(lo)}" y2="${Y(lo)}" stroke="var(--line)"/>
+    <text x="${pad.l}" y="${h - 4}" font-size="10" fill="var(--muted)">${esc(fmtDate(data[0].d).replace(/ \d{4}$/, ""))}</text>
+    <text x="${w - pad.r}" y="${h - 4}" font-size="10" fill="var(--muted)" text-anchor="end">${esc(fmtDate(data[n - 1].d).replace(/ \d{4}$/, ""))}</text>
+    <text x="${pad.l}" y="10" font-size="10.5" font-weight="700" fill="var(--ink)">${last ? esc(fmt(last.v)) : ""}</text></svg>`;
+}
+function gauge(v) {
+  const th = meta().thresholds, R = 74, cx = 100, cy = 94;
+  const pt = (f, r = R) => [cx - r * Math.cos(Math.PI * f), cy - r * Math.sin(Math.PI * f)];
+  const seg = (a, b, c) => { const [x0, y0] = pt(a), [x1, y1] = pt(b); return `<path d="M${x0} ${y0}A${R} ${R} 0 0 1 ${x1} ${y1}" fill="none" stroke="${c}" stroke-width="15"/>`; };
+  const f = v == null ? 0 : Math.max(0, Math.min(1, v)), [nx, ny] = pt(f, 58);
+  return `<svg viewBox="0 0 200 132" width="100%" style="max-width:300px;display:block;margin:0 auto">${seg(0, th.dry, "#DA3A2C")}${seg(th.dry, th.watch, "#F2B01E")}${seg(th.watch, 1, "#2EA05A")}
+    ${v == null ? "" : `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="6" fill="var(--ink)"/>`}
+    <text x="${cx}" y="128" text-anchor="middle" font-size="26" font-weight="800" fill="var(--ink)">${v == null ? "–" : pct(v) + "%"}</text>
+    <text x="${cx - R}" y="114" font-size="10.5" font-weight="600" fill="var(--muted)" text-anchor="middle">${esc(T("a_gauge_dry"))}</text><text x="${cx + R}" y="114" font-size="10.5" font-weight="600" fill="var(--muted)" text-anchor="middle">${esc(T("a_gauge_ok"))}</text></svg>`;
+}
+
+/* ---------- shell ---------- */
+function shell() {
+  $("#hdr").innerHTML = `${mark(32)}${wordmark()}<button class="iconbtn lbl" data-act="settings" aria-label="${esc(T("a_settings"))}">${ICON.gear}${esc(T("a_settings"))}</button>`;
+  const tabs = [["home", "home", "a_home"], ["crops", "crops", "a_crops"], ["map", "map", "a_map"], ["community", "people", "a_community"], ["about", "info", "a_about"]];
+  $("#navin").innerHTML = tabs.map(([k, i, l]) => `<button data-act="tab" data-v="${k}" class="${S.tab === k ? "on" : ""}">${ICON[i]}${esc(T(l))}</button>`).join("");
+}
+function render() {
+  const app = $("#app"), nav = $("#nav");
+  if (!S.boot.user.registered) { nav.hidden = true; $("#hdr").innerHTML = `${mark(32)}${wordmark()}`; return onboarding(app); }
+  nav.hidden = false; ensureCtx(); shell();
+  if (S.map && S.tab !== "map") { S.map.remove(); S.map = null; }
+  window.scrollTo(0, 0);
+  ({ home: renderHome, map: renderMap, crops: renderCrops, community: renderCommunity, about: renderAbout })[S.tab](app);
+  syncBanner();
+}
+const loadErr = (el) => { el.innerHTML = `<div class="card center"><p>${esc(T("a_error"))}</p><button data-act="retry">${esc(T("a_retry"))}</button></div>`; };
+
+/* ---------- onboarding ---------- */
+function onboarding(app) {
+  if (S.step === "lang") {
+    app.innerHTML = `<div class="center" style="padding-top:44px"><div class="logo">${mark(112)}</div><div style="font-size:30px">${wordmark(30)}</div><p class="sub" style="margin:10px 12px 26px">O'zbekcha · Русский · English</p>
+      <div style="display:grid;gap:10px"><button data-act="lang0" data-v="uz">🇺🇿 O'zbekcha</button><button data-act="lang0" data-v="ru">🇷🇺 Русский</button><button data-act="lang0" data-v="en">🇬🇧 English</button></div></div>`;
+  } else if (S.step === "about") {
+    const stp = (n, ic, t, d) => `<div class="guide"><div class="gi">${ic}</div><div><b>${n}. ${esc(T(t))}</b>${esc(T(d))}</div></div>`;
+    app.innerHTML = `<h1>${esc(T("a_tagline"))}</h1><div class="card"><h2>${esc(T("a_ob_title"))}</h2>${stp(1, ICON.crops, "a_ob1", "a_ob1_d")}${stp(2, ICON.home, "a_ob2", "a_ob2_d")}${stp(3, ICON.info, "a_ob3", "a_ob3_d")}</div><button class="block" data-act="step" data-v="reg">${esc(T("a_start"))}</button>`;
+  } else {
+    const tgName = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : "";
+    app.innerHTML = `<h1>${esc(T("a_start"))}</h1><label>${esc(T("a_name"))}</label><input id="rname" maxlength="40" value="${esc(S.boot.user.name || tgName || "")}"><div class="small" style="margin-top:4px">${esc(T("a_name_hint"))}</div>
+      <label>${esc(T("a_area"))}</label><div class="grid" id="rregions">${meta().regions.slice().sort((a, b) => meta().pilots.includes(b.id) - meta().pilots.includes(a.id)).map(r => `<div class="pill ${S.pickRegion === r.id ? "on" : ""}" data-act="pickr" data-v="${r.id}">${meta().pilots.includes(r.id) ? `<span class="pilot-star">★ ${esc(T("a_pilot"))}</span>` : ""}${esc(r.name[S.lang] || r.name.en)}</div>`).join("")}</div>
+      <button class="block" style="margin-top:18px" data-act="register">${esc(T("a_start"))}</button>`;
+  }
+}
+
+/* ---------- HOME ---------- */
+async function renderHome(app) {
+  const rid = ++S.rid;
+  app.innerHTML = `<div style="height:14px"></div>${ctxBar()}${tourCard()}<div id="body"><div class="skel" style="height:170px"></div><div class="skel"></div><div class="skel"></div></div>`;
+  try {
+    const d = await getData("status");
+    if (rid !== S.rid) return;
+    $("#body").innerHTML = homeBody(d);
+  } catch (e) { if (rid === S.rid) loadErr($("#body")); }
+}
+/* One-time "where is what" card for new users; dismissed for good with one tap. */
+const guideRows = () => [["home", "a_home", "a_h_home"], ["crops", "a_crops", "a_h_crops"], ["map", "a_map", "a_h_map"], ["people", "a_community", "a_h_comm"], ["gear", "a_settings", "a_h_settings"]]
+  .map(([ic, t, d]) => `<div class="guide"><div class="gi">${ICON[ic]}</div><div><b>${esc(T(t))}</b>${esc(T(d))}</div></div>`).join("");
+function tourCard() {
+  if (LS.get("sr:tour")) return "";
+  return `<div class="card"><h2>📌 ${esc(T("a_tour_title"))}</h2>${guideRows()}<button class="block" style="margin-top:10px" data-act="tourdone">${esc(T("a_tour_ok"))}</button></div>`;
+}
+const sec = (icon, title, body, open = false, right = "") => `<details class="card sec" ${open ? "open" : ""}><summary><span>${icon} ${esc(title)}</span><span class="r">${right}<i class="chev">›</i></span></summary><div class="secbody">${body}</div></details>`;
+const fmtRule = (v, unit) => v == null ? "–" : unit === "fraction" ? pct(v) + "%" : num(v, Math.abs(v) < 1 ? 2 : 1) + " " + (unit || "").replace(/ \/.*$/, "");
+function traceHTML(d) {
+  const tr = d.trace, r = d.rules;
+  const status = `<div class="small" style="margin-top:10px">${esc(T("a_rules_status", { v: r.version, who: r.validated_by || T("a_nobody") }))}</div>`;
+  if (!tr) return `<div style="font-size:14px">${esc(T("a_trace_fallow"))}</div>` + status;
+  const rows = tr.rows.map((x, i) => `<tr class="${i === tr.decisive ? "dec" : x.hit ? "hit" : ""}"><td>${esc(x.label)}</td><td><b>${esc(fmtRule(x.value, x.unit))}</b></td><td>${esc(x.op)} ${esc(fmtRule(x.threshold, x.unit))}</td><td>${i === tr.decisive ? `<span class="tag" style="background:${STATUS_COLOR[x.outcome]};${x.outcome === "MONITOR" ? "color:#2a1f00" : ""}">${esc(T("a_trace_decisive"))} → ${esc(T("st_" + x.outcome))}</span>` : x.hit ? "✓" : "–"}</td></tr>`).join("");
+  return `<div class="small" style="margin-bottom:8px">${esc(T("a_trace_intro"))}</div><div style="overflow-x:auto"><table class="tr"><thead><tr><th></th><th>${esc(T("a_trace_value"))}</th><th>${esc(T("a_trace_limit"))}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${tr.decisive == null ? `<p style="margin:10px 0 0;font-size:14px">${esc(T("a_trace_none"))}</p>` : ""}${status}
+    <button class="ghost mini" style="margin-top:10px" data-act="tab" data-v="about">${esc(T("a_rules_title"))} →</button>`;
+}
+const STATUS_ICON = { IRRIGATE: "💧", MONITOR: "👀", WAIT: "✅" };
+const DO_KEY = { IRRIGATE: "a_do_irrigate", MONITOR: "a_do_monitor", WAIT: "a_do_wait" };
+const SALT_KEY = { LOW: "a_salt_low", MEDIUM: "a_salt_medium", HIGH: "a_salt_high" };
+/* Order on screen = order of a farmer's questions: 1) what do I do today  2) weather  3) salt / flushing  4) record what I did  5) crops.
+   Everything technical (numbers, rule table, charts, data sources) sits in one collapsed block at the bottom. */
+function aiCard() {
+  if (!S.boot.meta.ai) return "";
+  const chips = ["ai_c1", "ai_c2", "ai_c3"].map(k => `<button class="ghost mini" data-act="ask" data-v="chip" data-q="${esc(T(k))}">${esc(T(k))}</button>`).join("");
+  return sec("🤖", T("ai_title"), `<div class="small" style="margin-bottom:8px">${esc(T("ai_hint"))}</div>
+      <div class="log">${chips}</div>
+      <div class="row" style="margin-top:8px;gap:8px"><input id="aiq" maxlength="300" placeholder="${esc(T("ai_ph"))}" style="flex:1"><button class="mini" data-act="ask" data-v="q">${esc(T("ai_send"))}</button></div>
+      <div id="aians" style="margin-top:10px;font-size:14px;white-space:pre-wrap"></div>`, true);
+}
+function homeBody(d) {
+  const a = d.advice, tx = d.text, c = d.climate, L = c.latest, im = a.irrigation.metrics || {}, tgt = d.target, isField = tgt.type === "field", m = d.measurement;
+  const th = meta().thresholds, st = a.irrigation.status;
+  let out = "";
+  if (!isField) out += `<div class="card cta"><h2>${esc(T("a_add_first"))}</h2><p>${esc(T("a_add_first_d"))}</p><button class="block" data-act="addfield">${esc(T("a_add_btn"))}</button></div>
+    <div class="card" style="background:var(--chip);box-shadow:none"><div class="small" style="color:var(--ink)">ℹ️ ${esc(T("a_district_view", { name: tgt.name }))}</div></div>`;
+  if (d.data_stale) out += `<div class="card alertbox"><div style="font-size:14px">⚠️ ${esc(T("a_stale_data"))}</div></div>`;
+  const tmins = c.forecast.slice(0, 3).map(f => f.tmin).filter(v => v != null);
+  if (tmins.length && Math.min(...tmins) <= 0) out += `<div class="card alertbox"><div style="font-size:15px;font-weight:600">❄️ ${esc(T("a_frost_warn", { t: Math.round(Math.min(...tmins)) }))}</div></div>`;
+
+  out += `<div class="hero ${st}"><div class="bg">${mark(190)}</div><div class="k">${esc(T("a_today"))} · ${esc(tgt.name)}${isField ? " · " + esc(nm("crops", tgt.crop)) : ""}</div>
+    <div class="w"><span class="ico">${STATUS_ICON[st]}</span>${esc(tx.irrigation_status)}</div><div class="do">${esc(T(DO_KEY[st]))}</div><p>${esc(tx.irrigation_reason)}</p>
+    <div class="facts"><div class="fact"><b>${pct(im.root_wetness)}%</b><span>${esc(T("a_fact_moist"))}</span></div><div class="fact"><b>${num(im.deficit_mm)} mm</b><span>${esc(T("a_fact_short"))}</span></div><div class="fact"><b>${im.forecast_available ? num(im.rain_next3d_mm) + " mm" : "–"}</b><span>${esc(T("a_fact_rain"))}</span></div></div></div>`;
+
+  out += aiCard();
+
+  if (c.forecast.length) out += sec("🌤", T("a_weather_week"), `<div class="fc">${c.forecast.map(f => `<div><b>${esc(fmtDay(f.d))}</b><div class="bar"><i style="height:${Math.min(46, f.rain * 4)}px" title="${f.rain} mm"></i></div>${num(f.rain)}<br>${num(f.tmax, 0)}° / ${num(f.tmin, 0)}°</div>`).join("")}</div><div class="small" style="margin-top:8px">${esc(T("a_weather_hint"))}</div>`, true);
+
+  out += `<div class="card"><div class="between"><h2 style="margin:0">🧂 ${esc(T("a_salt_card"))}</h2><span class="tag lv-${a.salinity.level}">${esc(tx.salt_level)}</span></div><div class="meter"><i style="left:${a.salinity.score}%"></i></div><div style="font-size:15px">${esc(T(SALT_KEY[a.salinity.level]))}</div></div>`;
+  out += `<div class="card"><div class="between"><h2 style="margin:0">🚿 ${esc(T("h_flush"))}</h2><b>${esc(tx.flush_status)}</b></div><div style="margin-top:6px;font-size:15px">${esc(tx.flush_reason)}</div>${d.flush_days != null ? `<div class="small" style="margin-top:8px">${esc(T("a_flush_since", { n: d.flush_days }))}</div>` : ""}</div>`;
+
+  if (isField) {
+    out += `<div class="card"><h2>📓 ${esc(T("a_log_q"))}</h2><div class="bigbtns">${["irrigated", "flushed", "sown", "harvested"].map(k => `<button class="ghost" data-act="event" data-v="${k}">${esc(T("a_ev_" + k))}</button>`).join("")}</div>
+      <div class="small" style="margin-top:8px">${esc(T("a_log_why"))}</div>
+      <div style="margin-top:8px">${d.events.length ? d.events.slice(0, 3).map(e => `<div class="evt">${esc(fmtDate(e.day))} · ${esc(T("a_ev_" + e.kind))}</div>`).join("") : `<div class="small">${esc(T("a_log_empty"))}</div>`}</div>
+      <div class="row" style="margin-top:12px"><button class="ghost mini" data-act="editfield">✏️ ${esc(T("a_edit"))}: ${esc(tgt.name)}</button></div></div>`;
+  }
+  out += `<div class="card"><h2>🌾 ${esc(T("h_crops"))}</h2><div class="chips">${tx.good_crops.map(x => `<span class="chip static" style="background:color-mix(in srgb,var(--green) 18%,var(--card))">${esc(x)}</span>`).join("")}</div>
+    <button class="ghost block mini" style="margin-top:12px" data-act="tab" data-v="crops">${esc(T("a_crops"))} →</button></div>`;
+  out += `<div class="row"><button class="ghost" data-act="share">↗ ${esc(T("a_share"))}</button></div>`;
+
+  // ---- technical block (collapsed) ----
+  let more = `<div class="card"><div class="between"><h2 style="margin:0">${esc(T("a_conditions"))}</h2><button class="ghost mini" data-act="refresh">↻ ${esc(T("a_refresh"))}</button></div>
+    <div class="small" style="margin:4px 0 12px">NASA POWER · ${esc(T("a_latest"))}: <b style="color:var(--ink)">${esc(fmtDate(c.data_date))}</b>${c.soil_date && c.soil_date !== c.data_date ? ` · ${esc(T("a_latest_soil"))} ${esc(fmtDate(c.soil_date))}` : ""}</div>
+    <div class="grid">
+      <div class="tile"><div class="l">🌡 ${esc(T("a_temp"))}</div><div class="v">${num(L.temp)}<small>°C</small></div><div class="small">${num(L.tmin)}° / ${num(L.tmax)}°</div></div>
+      <div class="tile"><div class="l">🌧 ${esc(T("a_rain7"))}</div><div class="v">${num(c.rain_7d)}<small> mm</small></div><div class="small">30d: ${num(c.rain_30d)} mm</div></div>
+      <div class="tile"><div class="l">💨 ${esc(T("a_hum"))}</div><div class="v">${num(L.humidity, 0)}<small>%</small></div><div class="small">${esc(T("a_et0"))}: ${num(L.et0)} mm/d</div></div>
+      <div class="tile"><div class="l">🌱 ${esc(T("a_soil_top"))}</div><div class="v">${pct(L.soil_top)}<small>%</small></div><div class="small">${esc(T("a_soil_root"))}: ${pct(L.soil_root)}%</div></div></div></div>`;
+  more += sec("🔍", T("a_how_decided"), traceHTML(d), false);
+  more += sec("💧", T("a_soil_root"), gauge(L.soil_root), false, `<b>${pct(L.soil_root)}%</b>`);
+  const N = S.trend, ch = c.chart.slice(-N);
+  more += sec("📈", T("a_trends"), `<div class="seg" style="width:160px;margin-bottom:6px">${[30, 90].map(n => `<button data-act="trend" data-v="${n}" class="${N === n ? "on" : ""}">${esc(T("a_days", { n }))}</button>`).join("")}</div>
+    <div class="small" style="margin:8px 0 2px;font-weight:600">${esc(T("a_t_rain"))}</div>${chart({ data: ch.map(r => ({ d: r.d, v: r.p })), kind: "bar", color: "#2D7FD0", min: 0, fmt: v => num(v) + " mm" })}
+    <div class="small" style="margin:12px 0 2px;font-weight:600">${esc(T("a_t_soil"))}</div>${chart({ data: ch.map(r => ({ d: r.d, v: r.wr })), color: "#2EA05A", min: 0, max: Math.max(0.8, ...ch.map(r => r.wr || 0)), lines: [{ v: th.dry, c: "#DA3A2C" }, { v: th.watch, c: "#F2B01E" }], fmt: v => pct(v) + "%" })}
+    <div class="small" style="margin:12px 0 2px;font-weight:600">${esc(T("a_t_temp"))}</div>${chart({ data: ch.map(r => ({ d: r.d, v: r.t })), color: "#F2B01E", fmt: v => num(v) + "°" })}`, false);
+  const guess = isField && d.field && d.field.ec !== "unk" && !m.ece ? `<p class="small" style="margin:8px 0 0">${esc(T("a_ec_guess"))}</p>` : "";
+  const measured = m.ece != null
+    ? `<div style="margin-top:10px;font-size:14px">✅ <b>${esc(T("a_ece_measured", { v: num(m.ece), date: fmtDate(m.ece_date) }))}</b><br><span class="small">${esc(T("a_ecl_" + m.ece_class))}</span>${m.stale ? `<div class="warn" style="margin-top:4px">⚠ ${esc(T("a_ece_stale"))}</div>` : ""}</div>`
+    : `<p class="small" style="margin:10px 0 0">🧪 ${esc(T("a_ece_none"))}. ${esc(T("salt_unknown"))}</p>${guess}`;
+  const water = m.water_ec != null ? `<div class="small" style="margin-top:8px">💧 ${esc(T("a_wec_line", { v: num(m.water_ec), cls: T("a_wcl_" + m.water_class) }))}</div>` : "";
+  more += sec("🧂", T("h_salt"), `<div class="between"><span class="small">${esc(T("because"))}: ${esc(tx.salt_factors || "–")} (${a.salinity.score}/100)</span></div><div class="small" style="margin-top:6px">${esc(T("a_risk_note"))}</div>${measured}${water}`, false, `<span class="tag lv-${a.salinity.level}">${esc(tx.salt_level)}</span>`);
+  if (d.regional) more += sec("🗺", T("a_regional"), `<div style="font-size:14px">${esc(T("a_regional_txt", { pct: d.regional.pct, region: d.regional.region }))}</div>`, false);
+  more += `<p class="small" style="margin-top:14px">ℹ️ ${esc(T("a_grid"))}<br>${esc(T("a_unvalidated"))}${a.data.source === "demo" ? " " + esc(T("demo_note")) : ""}</p>`;
+  out += `<details class="more" style="margin-top:16px"><summary><span>🔬 ${esc(T("a_details"))}</span><i class="chev">›</i></summary><div class="secbody">${more}</div></details>`;
+  out += `<p class="small" style="margin-top:14px">ℹ️ ${esc(T("disclaimer"))}</p>`;
+  return out;
+}
+
+/* ---------- MAP ---------- */
+const gibsDate = (offsetDays) => { const d = new Date(Date.now() - offsetDays * 864e5); return d.toISOString().slice(0, 10); };
+function ndviDate() {                         // MODIS 8-day composites start on day 1, 9, 17 … of each year
+  const d = new Date(Date.now() - 12 * 864e5), y = d.getUTCFullYear(), doy = Math.floor((d - Date.UTC(y, 0, 0)) / 864e5);
+  const start = doy - ((doy - 1) % 8); return new Date(Date.UTC(y, 0, start)).toISOString().slice(0, 10);
+}
+const STATUS_COLOR = { IRRIGATE: "#2D7FD0", MONITOR: "#F2B01E", WAIT: "#2EA05A" };
+async function renderMap(app) {
+  const rid = ++S.rid, gd = gibsDate(2);
+  app.innerHTML = `<h1>${esc(T("a_map_title"))}</h1><p class="sub" style="margin:0 0 8px">${esc(T("a_map_hint"))}</p>
+    <div class="scroll">${[["map", "a_l_map"], ["sat", "a_l_sat"], ["nasa", "a_l_nasa"]].map(([k, l]) => `<span class="chip ${S.layer === k ? "on" : ""}" data-act="layer" data-v="${k}">${esc(T(l))}</span>`).join("")}<span class="chip ${S.ndvi ? "on" : ""}" data-act="ndvi">🌿 ${esc(T("a_l_ndvi"))}</span></div>
+    <div class="mapwrap"><div id="map"></div></div>
+    <div class="legend"><b style="color:var(--ink)">${esc(T("a_legend"))}:</b>${["IRRIGATE", "MONITOR", "WAIT"].map(s => `<span><i style="background:${STATUS_COLOR[s]}"></i>${esc(T("st_" + s))}</span>`).join("")}</div>
+    <div class="small" style="margin-top:8px">${esc(T("a_circle_note"))}${S.layer === "nasa" ? ` · ${esc(T("a_gibs_date"))}: ${gd}` : ""}</div>${S.ndvi ? `<div class="card" style="margin-top:10px"><div class="small" style="color:var(--ink)">🌿 ${esc(T("a_ndvi_note"))} (${ndviDate()})</div></div>` : ""}`;
+  if (typeof L === "undefined") { $("#map").innerHTML = `<div class="center">${esc(T("a_error"))}</div>`; return; }
+  const sel = S.ctx && (S.ctx.type === "field" ? S.boot.fields.find(f => f.id === S.ctx.id) : meta().regions.find(r => r.id === S.ctx.id));
+  const c0 = sel ? [sel.lat, sel.lon] : [41.0, 64.5];
+  const map = L.map("map", { zoomControl: false, attributionControl: true }).setView(c0, sel ? 8 : 6); S.map = map;
+  L.control.zoom({ position: "topright" }).addTo(map);
+  const bases = {
+    map: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }),
+    sat: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, attribution: "Esri World Imagery" }),
+    nasa: L.tileLayer(`https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${gd}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`, { maxZoom: 12, maxNativeZoom: 9, attribution: "NASA GIBS / MODIS Terra" }),
+  };
+  bases[S.layer].addTo(map);
+  if (S.ndvi) L.tileLayer(`https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/${ndviDate()}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`, { maxZoom: 12, maxNativeZoom: 9, opacity: .8, attribution: "NASA GIBS / MODIS NDVI" }).addTo(map);
+  if (sel) L.circle([sel.lat, sel.lon], { radius: 25000, color: "#2EA05A", weight: 1.5, fillOpacity: .06, dashArray: "5 5" }).addTo(map);
+  try {
+    const pts = await api("/map");
+    if (rid !== S.rid || S.map !== map) return;
+    pts.forEach(p => {
+      const col = STATUS_COLOR[p.status] || "#888";
+      const m = L.circleMarker([p.lat, p.lon], { radius: p.kind === "field" ? 9 : 12, color: "#fff", weight: 2.5, fillColor: col, fillOpacity: 1 }).addTo(map);
+      m.bindTooltip(p.name, { permanent: p.pilot, direction: "top", offset: [0, -8] });
+      m.bindPopup(`<b>${esc(p.name)}</b>${p.pilot ? ` <span style="color:#B9820A;font-weight:800;font-size:11px">★ ${esc(T("a_pilot"))}</span>` : ""}<br><span class="tag" style="background:${col};${p.status === "MONITOR" ? "color:#2a1f00" : ""}">${esc(p.status_text)}</span> <span class="tag lv-${p.level}">${esc(T("h_salt"))}: ${esc(p.level_text)}</span><br><button class="mini" style="margin-top:9px" data-act="mapopen" data-t="${p.kind === "field" ? "field" : "area"}" data-v="${esc(p.id)}">${esc(T("a_open"))} →</button>`);
+    });
+    if (pts.length > 1 && !sel) map.fitBounds(pts.map(p => [p.lat, p.lon]), { padding: [30, 30] });
+  } catch (e) { if (rid === S.rid) toast(T("a_error")); }
+}
+
+/* ---------- CROPS ---------- */
+async function renderCrops(app) {
+  const rid = ++S.rid;
+  app.innerHTML = `<h1>${esc(T("a_crops_title"))}</h1>${ctxBar()}<div id="body"><div class="skel"></div><div class="skel" style="height:240px"></div></div>`;
+  try {
+    const [d, plan] = await Promise.all([getData("crops"), getData("plan").catch(() => null)]);
+    if (rid !== S.rid) return;
+    $("#body").innerHTML = cropsBody(d, plan);
+  } catch (e) { if (rid === S.rid) loadErr($("#body")); }
+}
+function cropsBody(d, plan) {
+  const isField = d.target.type === "field";
+  let out = `<div class="card"><div class="between"><h2 style="margin:0">🧂 ${esc(T("a_salt_now"))}</h2><span class="tag lv-${d.level}">${esc(d.level_text)}</span></div><div class="meter"><i style="left:${d.score}%"></i></div>
+    <div class="small">${d.ec_known ? "" : esc(T("a_assumed", { v: d.assumed_ec })) + "<br>"}${esc(T("a_tol_legend"))}</div>${d.ec_known ? `<p style="margin:8px 0 0;font-size:14px">✅ <b>${esc(T("a_ece_measured", { v: num(d.measurement.ece), date: fmtDate(d.measurement.ece_date) }))}</b> · ${esc(T("a_ecl_" + d.measurement.ece_class))}${d.measurement.stale ? `<br><span class="warn">⚠ ${esc(T("a_ece_stale"))}</span>` : ""}</p>` : `<p class="small" style="margin:8px 0 0">🧪 ${esc(T("a_ec_unknown"))}${d.ec_class_guess ? " " + esc(T("a_ec_guess")) : ""}</p>`}</div>`;
+  out += `<div class="card"><h2>🎯 ${esc(T("a_priorities"))}</h2>`;
+  if (isField) {
+    out += `<div class="small" style="margin-bottom:6px;font-weight:600">${esc(T("a_water_q"))}</div><div class="chips">${["normal", "limited", "scarce"].map(w => `<span class="chip ${d.water === w ? "on" : ""}" data-act="water" data-v="${w}">${esc(T("a_wa_" + w))}</span>`).join("")}</div>
+      <div class="small" style="margin:14px 0 6px;font-weight:600">${esc(T("a_prefs_q"))}</div><div class="chips">${meta().crop_order.map(c => `<span class="chip ${d.prefs.includes(c) ? "on" : ""}" data-act="pref" data-v="${c}">${esc(nm("crops", c))}</span>`).join("")}</div>`;
+  } else out += `<div class="small">${esc(T("a_no_fields"))}</div><button class="ghost block mini" style="margin-top:10px" data-act="addfield">${esc(T("m_add"))}</button>`;
+  out += `</div>`;
+  const fitL = { good: "a_fit_good", marginal: "a_fit_marginal", avoid: "a_fit_avoid" }, tolL = { tolerant: "a_tol_tolerant", moderate: "a_tol_moderate", sensitive: "a_tol_sensitive" };
+  const fitI = { good: "✅", marginal: "⚠️", avoid: "❌" };
+  out += d.crops.map(c => `<div class="card crop"><h3>${esc(c.name)}${c.preferred ? ` <span class="small" style="color:#B9820A;font-weight:800">${esc(T("a_pref_badge"))}</span>` : ""}${c.current ? ` <span class="small">${esc(T("a_current"))}</span>` : ""}</h3><span class="tag t-${c.fit}">${fitI[c.fit]} ${esc(T(fitL[c.fit]))}</span>
+    <div class="small">${esc(T(tolL[c.tolerance]))} · ${esc(T("a_thr", { v: c.threshold }))}</div><div class="small" style="text-align:right">${esc(T("a_water"))}: <span class="dots">${"●".repeat({ low: 1, medium: 2, high: 3 }[c.water_demand])}<s>${"●".repeat(3 - { low: 1, medium: 2, high: 3 }[c.water_demand])}</s></span></div>
+    <div class="tolbar"><div class="tol"><i style="width:${Math.min(100, c.threshold / 10 * 100)}%"></i><u style="left:${Math.min(98, d.assumed_ec / 10 * 100)}%"></u></div></div>
+    ${c.notes.map(n => `<div class="warn">⚠ ${esc(T("a_note_" + n))}</div>`).join("")}</div>`).join("");
+  out += `<div class="card"><h2>🔁 ${esc(T("a_rotation"))}</h2>${d.rotation.map((r, i) => `<div class="step"><i>${i + 1}</i><div>${esc(r)}</div></div>`).join("")}
+    <p style="font-size:14px;margin:10px 0 6px">${esc(d.rotation_text)}</p><div class="small"><b>${esc(T("a_why"))}:</b> ${esc(T("a_rot_why"))}</div></div>`;
+  if (plan) out += `<div class="card"><div class="between"><h2 style="margin:0">🗓 ${esc(T("plan_head"))}</h2></div>${plan.trend ? `<div class="small" style="margin:6px 0">${esc(plan.trend)}</div>` : ""}${plan.outlook.map(o => `<div class="month"><b>${esc(o.month)}</b><span>${esc(o.text)}</span></div>`).join("")}<div class="small" style="margin-top:8px">ℹ️ ${esc(plan.disclaimer)}</div></div>`;
+  out += `<p class="small">ℹ️ ${esc(T("a_fao_note"))}</p>`;
+  return out;
+}
+
+/* ---------- COMMUNITY ---------- */
+async function renderCommunity(app) {
+  const rid = ++S.rid, scope = S.scope || "region";
+  app.innerHTML = `<h1>👥 ${esc(T("a_community"))}</h1><p class="sub">${esc(T("a_posts_hint"))}</p>
+    <div class="card"><textarea id="ptext" maxlength="500" placeholder="${esc(T("ask_post"))}"></textarea><button class="block" style="margin-top:8px" data-act="post">${esc(T("a_share"))}</button></div>
+    <div class="seg">${[["region", "c_region"], ["all", "c_all"], ["mine", "c_mine"]].map(([k, l]) => `<button data-act="scope" data-v="${k}" class="${scope === k ? "on" : ""}">${esc(T(l))}</button>`).join("")}</div><div id="posts"><div class="skel"></div></div>`;
+  try {
+    const posts = await api("/posts?scope=" + scope);
+    if (rid !== S.rid) return;
+    $("#posts").innerHTML = posts.length ? posts.map(p => `<div class="card post"><div class="meta">👤 <b>${esc(p.author)}</b>${p.verified ? `<span class="vbadge">${esc(T("a_verified"))}</span>` : ""} · ${esc(p.region)} · ${esc(p.created.slice(0, 10))}</div><p>${esc(p.text)}</p>
+      <div class="acts"><button class="ghost mini" data-act="like" data-v="${p.id}">👍 ${p.likes}</button>${p.mine ? `<button class="ghost mini" data-act="delpost" data-v="${p.id}">${esc(T("del_post"))}</button>` : `<button class="ghost mini" data-act="report" data-v="${p.id}">${esc(T("report"))}</button>`}</div></div>`).join("")
+      : `<div class="card center sub">${esc(T("c_none"))}</div>`;
+  } catch (e) { if (rid === S.rid) loadErr($("#posts")); }
+}
+
+/* ---------- ABOUT ---------- */
+function renderAbout(app) {
+  const li = (arr) => arr.map(k => `<div class="step"><i>${k[0]}</i><div>${esc(T(k[1]))}</div></div>`).join("");
+  const src = [["NASA POWER", "https://power.larc.nasa.gov/docs/"], ["NASA SMAP L4 (NSIDC)", "https://nsidc.org/data/spl4smgp/versions/8"], ["NASA GIBS / MODIS", "https://www.earthdata.nasa.gov/data/tools/gibs"], ["Open-Meteo", "https://open-meteo.com"],
+    ["FAO Irrigation & Drainage Paper 29", "https://www.fao.org/4/t0667e/t0667e07.htm"], ["FAO crop salt tolerance (Annex 1)", "https://www.fao.org/4/y4263e/y4263e0e.htm"], ["Field Shift: Adapting Farms with NASA Data", "https://www.spaceappschallenge.org/2026/challenges/adapting-farms-with-nasa-data/"]];
+  const dot = (c, k) => `<div style="padding:6px 0;font-size:15px"><span class="dot" style="background:${c}"></span>${esc(T(k))}</div>`;
+  const faq = [["a_q1", "a_a1"], ["a_q2", "a_a2"], ["a_q3", "a_a3"], ["a_q4", "a_a4"]].map(([q, a]) => `<div style="padding:8px 0;border-bottom:1px dashed var(--line)"><b>${esc(T(q))}</b><div style="font-size:15px;margin-top:2px">${esc(T(a))}</div></div>`).join("");
+  app.innerHTML = `<h1>${esc(T("a_help_title"))}</h1><div class="card">${guideRows()}</div>
+    <div class="card"><h2>🎨 ${esc(T("a_colors_title"))}</h2>${dot(STATUS_COLOR.IRRIGATE, "a_c_irrigate")}${dot(STATUS_COLOR.MONITOR, "a_c_monitor")}${dot(STATUS_COLOR.WAIT, "a_c_wait")}</div>
+    <div class="card"><h2>❓ ${esc(T("a_faq_title"))}</h2>${faq}</div>
+    <details class="more"><summary><span>🛰 ${esc(T("a_tech_title"))}</span><i class="chev">›</i></summary><div class="secbody">
+    <div class="center" style="padding:22px 0 6px"><div class="logo">${mark(84)}</div><div style="font-size:28px">${wordmark(28)}</div><p class="sub" style="margin:8px 8px 0">${esc(T("a_tagline"))}</p></div>
+    <div class="card"><h2>${esc(T("a_how_title"))}</h2>${li([[1, "a_how_1"], [2, "a_how_2"], [3, "a_how_3"], [4, "a_how_4"]])}</div>
+    <div class="card"><h2>🛰 ${esc(T("a_data_title"))}</h2>${["a_d_power", "a_d_smap", "a_d_modis", "a_d_meteo", "a_d_fao"].map(k => `<p style="margin:0 0 10px;font-size:14px">${esc(T(k))}</p>`).join("")}</div>
+    <div class="card"><h2>🗂 ${esc(T("a_sources_title"))}</h2><div id="srcbox"><div class="skel" style="height:70px;margin:0"></div></div></div>
+    <div class="card"><h2>⚙️ ${esc(T("a_rules_title"))}</h2><div class="small" style="margin-bottom:10px">${esc(T("a_rules_intro"))}</div><div id="rulesbox"><div class="skel" style="height:70px;margin:0"></div></div></div>
+    <div class="card"><h2>⚠️ ${esc(T("a_limits_title"))}</h2>${["a_lim_1", "a_lim_2", "a_lim_3", "a_lim_4"].map(k => `<p style="margin:0 0 10px;font-size:14px">• ${esc(T(k))}</p>`).join("")}</div>
+    <div class="card" style="border-color:var(--amber)"><h2>🧪 ${esc(T("a_valid_title"))}</h2><p style="margin:0;font-size:14px">${esc(T("a_valid_txt"))}</p></div>
+    <div class="card"><h2>🔗 ${esc(T("a_sources"))}</h2>${src.map(([n, u]) => `<div style="padding:5px 0"><a href="${u}" data-link="${u}">${esc(n)}</a></div>`).join("")}</div>
+    <div class="card"><h2>🤖 ${esc(T("a_ai_title"))}</h2><p style="margin:0;font-size:14px">${esc(T("a_ai_txt"))}</p></div>
+    <p class="small" style="text-align:center">${esc(T("a_credits"))}</p></div></details>`;
+  const rid = ++S.rid;
+  api("/rules").then(r => {
+    if (rid !== S.rid || !$("#rulesbox")) return;
+    const groups = {}; r.rules.forEach(x => (groups[x.group] = groups[x.group] || []).push(x));
+    $("#rulesbox").innerHTML = `<div class="small" style="margin-bottom:8px"><b>${esc(T("a_rules_status", { v: r.version, who: r.validated_by || T("a_nobody") }))}</b></div>` +
+      Object.entries(groups).map(([g, items]) => `<div class="small" style="margin:12px 0 4px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">${esc(g)}</div><table class="tr">${items.map(x => `<tr><td>${esc(x.label)}</td><td><b>${esc(fmtRule(x.value, x.unit))}</b></td><td>${x.validated ? `<span class="tag" style="background:var(--green)">${esc(T("a_sourced"))}</span>` : `<span class="tag" style="background:var(--amber);color:#2a1f00">${esc(T("a_illustrative"))}</span>`}</td></tr>`).join("")}</table>`).join("");
+  }).catch(() => { if ($("#rulesbox")) $("#rulesbox").innerHTML = `<div class="small">${esc(T("a_error"))}</div>`; });
+  api("/sources").then(list => {
+    if (rid !== S.rid || !$("#srcbox")) return;
+    const when = iso => iso ? new Date(iso).toLocaleString(LOC[S.lang] || "en-GB", { dateStyle: "medium", timeStyle: "short" }) : T("a_src_na");
+    $("#srcbox").innerHTML = list.map(s => `<div class="src"><b>${esc(s.name)}</b> <span class="small">${esc(s.product)}</span>${s.stale ? ` <span class="tag" style="background:var(--amber);color:#2a1f00">${esc(T("a_stale_tag"))}</span>` : ""}
+      <div class="small">${esc(T("a_src_version"))}: ${esc(s.version || T("a_src_na"))} · ${esc(T("a_src_res"))}: ${esc(s.resolution)}<br>${esc(T("a_src_params"))}: ${esc(s.params)}<br>${esc(T("a_src_accessed"))}: ${esc(when(s.accessed))}</div></div>`).join("");
+  }).catch(() => { if ($("#srcbox")) $("#srcbox").innerHTML = `<div class="small">${esc(T("a_error"))}</div>`; });
+}
+
+/* ---------- sheets ---------- */
+function openSheet(html) { closeSheet(); const bg = document.createElement("div"); bg.className = "sheet-bg"; bg.id = "sheet"; bg.innerHTML = `<div class="sheet"><div class="grab"></div>${html}</div>`; bg.addEventListener("click", e => { if (e.target === bg) closeSheet(); }); document.body.appendChild(bg); }
+const closeSheet = () => document.querySelectorAll("#sheet").forEach(s => s.remove());
+
+function openForm(f) {
+  const isNew = !f;
+  const v = f || { name: "", region: S.boot.user.region, crop: "cotton", stage: "mid", groundwater: "unknown", drainage: "unknown", last_flush: "unk", ec: "unk", water: "normal" };
+  const today = new Date().toISOString().slice(0, 10);
+  S.form = { id: f && f.id, gps: null };
+  const sel = (id, tbl, order, cur) => `<select id="${id}">${order.map(k => `<option value="${k}" ${k === cur ? "selected" : ""}>${esc(nm(tbl, k))}</option>`).join("")}</select>`;
+  openSheet(`<div class="between"><h1 style="margin:8px 0">${esc(isNew ? T("m_add") : T("a_edit"))}</h1><button class="ghost mini" data-act="closesheet">✕</button></div>
+    ${isNew ? `<p class="sub" style="margin:0">${esc(T("a_form_hint"))}</p>` : ""}
+    <label>${esc(T("a_f_name"))}</label><input id="fname" maxlength="40" value="${esc(v.name)}" placeholder="${esc(T("ask_fname").replace(/[:：]\s*$/, ""))}">
+    <label>${esc(T("a_area"))}</label><select id="fregion">${meta().regions.map(r => `<option value="${r.id}" ${v.region === r.id ? "selected" : ""}>${esc(r.name[S.lang] || r.name.en)}</option>`).join("")}</select>
+    <button class="ghost block mini" id="gpsbtn" style="margin-top:8px" data-act="gps">${esc(T("a_f_gps"))}</button>
+    <label>${esc(T("a_f_crop"))}</label>${sel("fcrop", "crops", meta().crop_order, v.crop)}<label>${esc(T("a_f_stage"))}</label>${sel("fstage", "stages", meta().stage_order, v.stage)}
+    <details class="more"><summary><span>🧂 ${esc(T("a_soil_more"))}</span><i class="chev">›</i></summary><div class="secbody">
+    <label>${esc(T("a_f_gw"))}</label>${sel("fgw", "gw", Object.keys(meta().gw), v.groundwater)}<label>${esc(T("a_f_dr"))}</label>${sel("fdr", "dr", Object.keys(meta().dr), v.drainage)}
+    <label>${esc(T("a_f_fl"))}</label>${sel("ffl", "fl", Object.keys(meta().fl), v.last_flush)}<label>${esc(T("a_f_ec"))}</label>${sel("fec", "ec", Object.keys(meta().ec), v.ec)}
+    <label>${esc(T("a_f_ece"))}</label><div class="row"><input id="fece" inputmode="decimal" placeholder="4.2" value="${v.ece ?? ""}"><input id="fecedate" type="date" value="${v.ece_date || today}" max="${today}" aria-label="${esc(T("a_f_ece_date"))}"></div><div class="small" style="margin-top:4px">${esc(T("a_f_ece_hint"))}</div>
+    <label>${esc(T("a_f_wec"))}</label><input id="fwec" inputmode="decimal" placeholder="1.2" value="${v.water_ec ?? ""}"><div class="small" style="margin-top:4px">${esc(T("a_f_wec_hint"))}</div>
+    <label>${esc(T("a_water_q"))}</label><select id="fwater">${["normal", "limited", "scarce"].map(w => `<option value="${w}" ${v.water === w ? "selected" : ""}>${esc(T("a_wa_" + w))}</option>`).join("")}</select></div></details>
+    <button class="block" style="margin-top:18px;position:sticky;bottom:8px" data-act="saveform">${esc(T("a_save"))}</button>`);
+}
+async function saveForm() {
+  if (S.saving) return;
+  const q = id => $("#sheet " + id), name = q("#fname").value.trim();
+  if (!name) { q("#fname").focus(); return toast(T("a_need_fname")); }
+  const body = { name, crop: q("#fcrop").value, stage: q("#fstage").value, groundwater: q("#fgw").value, drainage: q("#fdr").value, last_flush: q("#ffl").value, ec: q("#fec").value, water: q("#fwater").value };
+  if (S.form.gps) { body.lat = S.form.gps[0]; body.lon = S.form.gps[1]; } else body.region = q("#fregion").value;
+  const readNum = id => { const t = q(id).value.trim().replace(",", "."); return t === "" ? null : parseFloat(t); };
+  const ece = readNum("#fece"), wec = readNum("#fwec");
+  if (Number.isNaN(ece) || Number.isNaN(wec) || (ece != null && (ece < 0 || ece > 60)) || (wec != null && (wec < 0 || wec > 30))) return toast(T("a_error"));
+  if (ece != null) { body.ece = ece; body.ece_date = q("#fecedate").value || undefined; } else if (S.form.id) body.clear_ece = true;
+  if (wec != null) body.water_ec = wec; else if (S.form.id) body.clear_water_ec = true;
+  S.saving = true;
+  try {
+    const f = S.form.id ? await api("/fields/" + S.form.id, "PUT", body) : await api("/fields", "POST", body);
+    closeSheet(); haptic(); dropCache(); await load(false); S.ctx = { type: "field", id: f.id }; S.tab = "home"; render();
+  } catch (e) { toast(/outside/.test(e.message) ? T("loc_out") : T("a_error")); }
+  finally { S.saving = false; }
+}
+function openSettings() {
+  const u = S.boot.user;
+  openSheet(`<div class="between"><h1 style="margin:8px 0">⚙️ ${esc(T("a_settings"))}</h1><button class="ghost mini" data-act="closesheet">✕</button></div>
+    <label>${esc(T("a_lang"))}</label><div class="grid" style="grid-template-columns:repeat(3,1fr)">${[["uz", "O'zbekcha"], ["ru", "Русский"], ["en", "English"]].map(([c, l]) => `<div class="pill ${S.lang === c ? "on" : ""}" data-act="setlang" data-v="${c}">${l}</div>`).join("")}</div>
+    <label>${esc(TL("title"))}</label><div class="grid" style="grid-template-columns:repeat(3,1fr)">${["light", "dark", "auto"].map(k => `<div class="pill ${themePref() === k ? "on" : ""}" data-act="settheme" data-v="${k}">${TL(k)}</div>`).join("")}</div>
+    <label>${esc(T("a_area"))}</label><select data-act="setregion">${meta().regions.map(r => `<option value="${r.id}" ${u.region === r.id ? "selected" : ""}>${esc(r.name[S.lang] || r.name.en)}</option>`).join("")}</select>
+    <div class="card between" style="margin-top:14px"><b>🔔 ${esc(T("a_notif"))}</b><button class="sw ${u.notify ? "on" : ""}" data-act="setnotify" aria-label="${esc(T("a_notif"))}"></button></div>
+    <div class="card"><label style="margin-top:0">${esc(T("a_alert_time"))}</label><select data-act="setalert">${[5, 6, 7, 8, 9, 10].map(h => `<option value="${h}" ${(u.alert_hour || 7) === h ? "selected" : ""}>${String(h).padStart(2, "0")}:00</option>`).join("")}</select><div class="small" style="margin-top:6px">${esc(T("a_alert_hint"))}</div></div>
+    <h2 style="margin-top:16px">${esc(T("a_fields_manage"))}</h2>${S.boot.fields.length ? S.boot.fields.map(f => `<div class="between" style="padding:7px 0;border-bottom:1px solid var(--line)"><span>🌾 ${esc(f.name)} <span class="small">${esc(nm("crops", f.crop))}</span></span><span class="row" style="flex:none"><button class="ghost mini" data-act="editfieldid" data-v="${f.id}">✏️</button><button class="danger mini" data-act="delfield" data-v="${f.id}">🗑</button></span></div>`).join("") : `<div class="small">${esc(T("a_no_fields"))}</div>`}
+    <button class="ghost block" style="margin-top:12px" data-act="addfield">${esc(T("m_add"))}</button>
+    <button class="danger block" style="margin-top:18px" data-act="delacc">${esc(T("s_delete"))}</button>`);
+}
+
+/* ---------- data load ---------- */
+async function load(draw = true) {
+  S.boot = await api("/bootstrap");
+  S.lang = S.boot.user.lang || S.lang || "uz";
+  if (draw) render();
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", async ev => {
+  const lk = ev.target.closest("[data-link]"); if (lk) { ev.preventDefault(); return openLink(lk.dataset.link); }
+  const el = ev.target.closest("[data-act]"); if (!el || el.tagName === "SELECT") return;
+  const act = el.dataset.act, v = el.dataset.v;
+  try {
+    switch (act) {
+      case "lang0": S.lang = v; S.boot.user.lang = v; S.step = "about"; render(); break;
+      case "step": S.step = v; render(); break;
+      case "pickr": S.pickRegion = v; document.querySelectorAll("#rregions .pill").forEach(p => p.classList.toggle("on", p.dataset.v === v)); break;
+      case "register": {
+        if (S.registering) return;
+        const name = $("#rname").value.trim();
+        if (name.length < 2) return toast(T("name_bad"));
+        if (!S.pickRegion) return toast(T("ask_region"));
+        S.registering = true;
+        try { await api("/register", "POST", { name, region: S.pickRegion, lang: S.lang }); await load(); S.ctx = null; openForm(null); } finally { S.registering = false; }
+        break;
+      }
+      case "tab": S.tab = v; render(); break;
+      case "areas": S.areas = !S.areas; render(); break;
+      case "tourdone": LS.set("sr:tour", 1); render(); break;
+      case "ctx": S.ctx = { type: el.dataset.t, id: el.dataset.t === "field" ? +v : v }; render(); break;
+      case "mapopen": if (S.map) S.map.closePopup(); S.ctx = { type: el.dataset.t, id: el.dataset.t === "field" ? +v : v }; S.tab = "home"; render(); break;
+      case "retry": render(); break;
+      case "trend": S.trend = +v; render(); break;
+      case "refresh": { el.disabled = true; el.textContent = "…"; try { dropCache(); await getData("status", true); toast(T("a_refreshed")); haptic(); } catch (e) { toast(T("a_error")); } render(); break; }
+      case "share": {
+        const d = S.cache[ctxKey(S.ctx) + ":status"]; if (!d) return;
+        const text = T("a_share_text", { name: d.target.name, status: d.text.irrigation_status, reason: d.text.irrigation_reason });
+        const url = "https://t.me/share/url?url=" + encodeURIComponent("https://t.me/ShorRadarBot") + "&text=" + encodeURIComponent(text);
+        tg && tg.openTelegramLink ? tg.openTelegramLink(url) : window.open(url, "_blank"); break;
+      }
+      case "event": { await api(`/fields/${S.ctx.id}/events`, "POST", { kind: v }); toast(T("a_logged")); haptic(); dropCache(); await load(false); render(); break; }
+      case "layer": S.layer = v; render(); break;
+      case "ndvi": S.ndvi = !S.ndvi; render(); break;
+      case "water": await api(`/fields/${S.ctx.id}`, "PUT", { water: v }); dropCache(); await load(false); render(); break;
+      case "pref": {
+        const f = S.boot.fields.find(f => f.id === S.ctx.id), set = new Set(f.prefs); set.has(v) ? set.delete(v) : set.add(v);
+        await api(`/fields/${S.ctx.id}`, "PUT", { pref_crops: [...set] }); dropCache(); await load(false); render(); break;
+      }
+      case "addfield": closeSheet(); openForm(null); break;
+      case "editfield": openForm(S.boot.fields.find(f => f.id === S.ctx.id)); break;
+      case "editfieldid": openForm(S.boot.fields.find(f => f.id === +v)); break;
+      case "closesheet": closeSheet(); break;
+      case "saveform": await saveForm(); break;
+      case "gps":
+        if (!navigator.geolocation) return toast(T("a_error"));
+        navigator.geolocation.getCurrentPosition(p => { S.form.gps = [p.coords.latitude, p.coords.longitude]; $("#gpsbtn").textContent = T("a_f_gps_ok"); }, () => toast(T("a_error")), { timeout: 10000 });
+        break;
+      case "settings": openSettings(); break;
+      case "settheme": LS.set("sr:theme", v); applyTheme(); openSettings(); break;
+      case "setlang": await api("/settings", "POST", { lang: v }); S.lang = v; closeSheet(); dropCache(); await load(); break;
+      case "setnotify": await api("/settings", "POST", { notify: !S.boot.user.notify }); await load(false); openSettings(); break;
+      case "delfield": confirmBox(T("confirm_del"), async () => { await api("/fields/" + v, "DELETE"); closeSheet(); dropCache(); S.ctx = null; await load(); }); break;
+      case "delacc": confirmBox(T("confirm_acc"), async () => { await api("/account", "DELETE"); closeSheet(); S.step = "lang"; S.ctx = null; dropCache(); await load(); }); break;
+      case "ask": {
+        const box = $("#aians"), input = $("#aiq");
+        const q = v === "q" ? (input.value || "").trim() : v === "chip" ? (el.dataset.q || "") : "";
+        if (v === "q" && !q) return;
+        if (v === "chip") input.value = q;
+        const path = S.ctx.type === "field" ? `/fields/${S.ctx.id}/ask` : `/area/${S.ctx.id}/ask`;
+        box.textContent = "…"; el.disabled = true;
+        try { const r = await api(path, "POST", { question: q }, 50000); box.textContent = r.answer; if (r.ai) { const n = document.createElement("div"); n.className = "small"; n.style.marginTop = "6px"; n.textContent = T("ai_note"); box.appendChild(n); } else toast(T("ai_fallback")); }
+        catch (e) { box.textContent = ""; toast(/limit/.test(e.message) ? T("ai_limit") : T("a_error")); }
+        el.disabled = false; break;
+      }
+      case "scope": S.scope = v; render(); break;
+      case "post": {
+        const text = $("#ptext").value.trim(); if (text.length < 10) return toast(T("post_bad"));
+        try { await api("/posts", "POST", { text }); toast(T("post_saved")); haptic(); render(); } catch (e) { toast(/limit/.test(e.message) ? T("post_limit") : T("a_error")); }
+        break;
+      }
+      case "like": { const r = await api(`/posts/${v}/like`, "POST"); el.textContent = "👍 " + r.likes; break; }
+      case "report": { const r = await api(`/posts/${v}/report`, "POST"); toast(T(r.new ? "reported" : "reported_already")); break; }
+      case "delpost": confirmBox(T("confirm_del"), async () => { await api("/posts/" + v, "DELETE"); render(); }); break;
+    }
+  } catch (e) { toast(T("a_error")); }
+});
+document.addEventListener("change", async ev => {
+  const t = ev.target, act = t.dataset && t.dataset.act;
+  try {
+    if (act === "ctxsel" && t.value) { S.ctx = { type: "area", id: t.value }; render(); }
+    if (act === "setalert") { await api("/settings", "POST", { alert_hour: +t.value }); await load(false); toast(T("updated")); }
+    if (act === "setregion") { await api("/settings", "POST", { region: t.value }); await load(false); toast(T("updated")); }
+  } catch (e) { toast(T("a_error")); }
+});
+if (tg) tg.onEvent("viewportChanged", () => { if (S.map) S.map.invalidateSize(); });
+
+(async () => {
+  if (!tg || !tg.initData) {
+    $("#hdr").innerHTML = `${mark(32)}${wordmark()}`;
+    $("#app").innerHTML = `<div class="center" style="padding-top:60px"><div class="logo">${mark(96)}</div><h1>Sho'r Radar</h1><p class="sub">Telegram → @ShorRadarBot → <b>Open app</b><br>Telegram → @ShorRadarBot → <b>Ilovani ochish</b><br>Telegram → @ShorRadarBot → <b>Открыть приложение</b></p></div>`; return;
+  }
+  try { await load(); } catch (e) { $("#app").innerHTML = `<div class="center"><p>${esc(e.message)}</p><button data-act="retry">↻</button></div>`; }
+})();
+</script>
+</body>
+</html>
